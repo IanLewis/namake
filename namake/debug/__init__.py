@@ -7,6 +7,8 @@ from string import Template
 
 from webob.exc import HTTPInternalServerError
 
+# TODO: Smaller customized bootstrap.
+# http://twitter.github.com/bootstrap/customize.html
 with open(os.path.join(os.path.dirname(__file__), 'bootstrap.min.css')) as bsfd:
     _bootstrap_css = bsfd.read()
 with open(os.path.join(os.path.dirname(__file__), 'bootstrap-responsive.min.css')) as bsfd:
