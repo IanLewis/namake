@@ -1,3 +1,9 @@
+"""
+The application module for Namake.
+
+This module defines the main WSGI application class.
+"""
+
 import re
 import logging
 
@@ -9,6 +15,8 @@ from webob import exc, Request, Response
 # TODO: Logging using the standard logging module.
 # TODO: Namake's Request and Response objects.
 
+from .config import Config
+
 logger = logging.getLogger(__name__)
 
 __all__ = (
@@ -19,10 +27,15 @@ __all__ = (
 
 class Application(object):
     request_class = Request
+    #: Default configuration parameters.
+    default_config = {
+        'DEBUG':    False,
+    }
 
     def __init__(self):
         self.routes = []
         self.controller_cache = {}
+        self.config = Config()
 
         # Setup basic logging.
         if not logging.root.handlers and logger.level == logging.NOTSET:
@@ -42,7 +55,6 @@ class Application(object):
                             kwargs))
 
     def __call__(self, environ, start_response):
-
         req = self.request_class(environ)
         for regex, name, controller_path, kwargs in self.routes:
             match = regex.match(req.path_info)
@@ -67,6 +79,10 @@ class Application(object):
 
                 if controller: 
                     request = Request(environ)
+
+                    # Attach the application to the request so that the
+                    # request handler has a copy of it.
+                    request.app = self
 
                     # If there are any named groups, use those as kwargs, ignoring
                     # non-named groups. Otherwise, pass all non-named arguments as
