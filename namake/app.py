@@ -86,6 +86,7 @@ class Application(object):
         self.routes = []
         self.controller_cache = {}
         self.extensions = {}
+        self._error_handlers = {}
         self.root_path = get_root_path(import_name)
         self.config = Config(self.root_path, 
                              defaults=self.get_default_config())
@@ -171,23 +172,43 @@ class Application(object):
         """
         Handles a request via the given controller.
         """
-        return self.make_response(request, controller(request, *args, **kwargs))
+        return self.make_response(controller(request, *args, **kwargs))
+
+    def register_error_handler(self, code, f):
+        """
+        Registers an error handler for the given HTTP status
+        code with the application.
+        """
+        self._error_handlers[code] = f
 
     def handle_exception(self, request, e, exc_info=None):
+        """
+        Handles an exception within the application.
+        If a corresponding handler is registered with the application
+        we call that otherwise a generic message is displayed.
+        """
         from webob import exc
         if isinstance(e, exc.HTTPException):
             if isinstance(e, exc.HTTPServerError):
-                logger.error("HTTP Server Error", exc_info=1)
-            return e
+                logger.error('HTTP Server Error: "%s"' % e, exc_info=1)
+            status = e.code 
         else:
-            logger.error("Internal Server Error", exc_info=1)
-            if self.config['DEBUG']:
-                from .debug import DebugHTTPInternalServerError
-                return DebugHTTPInternalServerError(exc_info=exc_info)
-            else:
-                return exc.HTTPInternalServerError()
+            logger.error('Internal Server Error: "%s"' % e, exc_info=1)
+            status = 500
+            e = exc.HTTPInternalServerError()
+        
+        # If in debug mode show the debug error page.
+        if status == 500 and self.config['DEBUG']:
+            from .debug import DebugHTTPInternalServerError
+            return DebugHTTPInternalServerError(exc_info=exc_info)
 
-    def make_response(self, request, rv):
+        handler = self._error_handlers.get(status)
+        if handler:
+            return self.make_response(handler(e))
+        else:
+            return self.make_response(e)
+
+    def make_response(self, rv):
         """Converts the return value from a view function to a real
         response object that is an instance of :attr:`response_class`.
 
