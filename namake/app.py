@@ -123,47 +123,41 @@ class Application(object):
             match = regex.match(request.path_info)
             if match:
                 # Get the proper controller
-                controller = self.controller_cache.pop(controller_path, None)
-                if not controller:
-                    if hasattr(controller_path, '__call__'):
-                        # The given controller is already a callable. Just use it.
-                        controller = controller_path
-                        self.controller_cache[controller_path] = controller
-                    else:
-                        # The controller module hasn't been loaded yet.
-                        # Load it here.
-                        try:
+                try:
+                    controller = self.controller_cache.pop(controller_path, None)
+                    if not controller:
+                        if hasattr(controller_path, '__call__'):
+                            # The given controller is already a callable. Just use it.
+                            controller = controller_path
+                            self.controller_cache[controller_path] = controller
+                        else:
+                            # The controller module hasn't been loaded yet.
+                            # Load it here.
                             from .utils import import_string
                             controller = import_string(controller_path)
-                        except ImportError:
-                            # TODO: HTML Tracebacks, Debugging, etc.
-                            logger.error("Internal Server Error", exc_info=1)
-                            return exc.HTTPServerError()(environ, start_response)
 
-                
+                    # If there are any named groups, use those as kwargs, ignoring
+                    # non-named groups. Otherwise, pass all non-named arguments as
+                    # positional arguments.
+                    urlkwargs = match.groupdict()
+                    if urlkwargs:
+                        urlargs = ()
+                    else:
+                        urlargs = match.groups()
 
-                # If there are any named groups, use those as kwargs, ignoring
-                # non-named groups. Otherwise, pass all non-named arguments as
-                # positional arguments.
-                urlkwargs = match.groupdict()
-                if urlkwargs:
-                    urlargs = ()
-                else:
-                    urlargs = match.groups()
+                    # In both cases, pass any extra_kwargs as **kwargs.
+                    if kwargs:
+                        urlkwargs.update(kwargs)
 
-                # In both cases, pass any extra_kwargs as **kwargs.
-                if kwargs:
-                    urlkwargs.update(kwargs)
-
-                try:
+                    # Call the request handler and return the response.
                     response = self.handle_request(request, controller, urlargs, urlkwargs)
+                    return response(environ, start_response)
                 except Exception, e:
                     # An exception has occurred. 
                     exc_info = sys.exc_info()
                     response = self.handle_exception(request, e, exc_info)
                     start_response = repl_start_response(start_response, exc_info)
-
-                return response(environ, start_response)
+                    return response(environ, start_response)
 
         # No matching URLs. Return A 404.
         return self.handle_exception(request, exc.HTTPNotFound())(environ, start_response)
