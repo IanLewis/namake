@@ -67,10 +67,20 @@ class Application(object):
 
                 if controller: 
                     request = Request(environ)
-                    urlvars = match.groupdict()
+
+                    # If there are any named groups, use those as kwargs, ignoring
+                    # non-named groups. Otherwise, pass all non-named arguments as
+                    # positional arguments.
+                    urlkwargs = match.groupdict()
+                    if urlkwargs:
+                        urlargs = ()
+                    else:
+                        urlargs = match.groups()
+
+                    # In both cases, pass any extra_kwargs as **kwargs.
                     if kwargs:
-                        urlvars.update(kwargs)
-                    response = controller(request, **urlvars)
+                        urlkwargs.update(kwargs)
+                    response = controller(request, *urlargs, **urlkwargs)
                     return response(environ, start_response)
 
         return exc.HTTPNotFound()(environ, start_response)
