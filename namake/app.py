@@ -10,7 +10,7 @@ import os
 import pkgutil
 import logging
 
-from webob import exc, Request, Response
+from webob import Request, Response
 
 # TODO: Reloading local development server.
 # TODO: HTTP request error handling based on webob.exc
@@ -160,6 +160,7 @@ class Application(object):
                     return response(environ, start_response)
 
         # No matching URLs. Return A 404.
+        from webob import exc
         return self.handle_exception(request, exc.HTTPNotFound())(environ, start_response)
     
     def handle_request(self, request, controller, args, kwargs):
@@ -169,6 +170,7 @@ class Application(object):
         return self.make_response(request, controller(request, *args, **kwargs))
 
     def handle_exception(self, request, e, exc_info=None):
+        from webob import exc
         if isinstance(e, exc.HTTPException):
             if isinstance(e, exc.HTTPServerError):
                 logger.error("HTTP Server Error", exc_info=1)
