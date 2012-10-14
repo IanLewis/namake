@@ -7,12 +7,10 @@ from string import Template
 
 from webob.exc import HTTPInternalServerError
 
-# TODO: Smaller customized bootstrap.
-# http://twitter.github.com/bootstrap/customize.html
+# Customized bootstrap.
 with open(os.path.join(os.path.dirname(__file__), 'bootstrap.min.css')) as bsfd:
     _bootstrap_css = bsfd.read()
-with open(os.path.join(os.path.dirname(__file__), 'bootstrap-responsive.min.css')) as bsfd:
-    _bootstrap_responsive_css = bsfd.read()
+# For color coding Tracebacks
 with open(os.path.join(os.path.dirname(__file__), 'prettify.css')) as bsfd:
     _prettify_css = bsfd.read()
 with open(os.path.join(os.path.dirname(__file__), 'prettify.js')) as bsfd:
@@ -24,7 +22,6 @@ class DebugHTTPInternalServerError(HTTPInternalServerError):
 <html>
 <head>
 <title>${status}</title>
-<style type="text/css">%s</style>
 <style type="text/css">%s</style>
 <style type="text/css">%s</style>
 <script type="text/javascript">%s</script>
@@ -41,8 +38,7 @@ pre.prettyprint {padding:10px 15px;}
   </div>
 </body>
 </html>''' % (
-    _bootstrap_css, _bootstrap_responsive_css,
-    _prettify_css, _prettify_js.replace("$", "$$"),
+    _bootstrap_css, _prettify_css, _prettify_js.replace("$", "$$"),
 ))
 
     body_template_obj = Template('''\
