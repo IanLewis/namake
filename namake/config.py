@@ -62,8 +62,9 @@ class Config(dict):
     :param defaults: an optional dictionary of default values
     """
 
-    def __init__(self, defaults=None):
+    def __init__(self, root_path, defaults=None):
         dict.__init__(self, defaults or {})
+        self.root_path = root_path
 
     def from_envvar(self, variable_name, silent=False):
         """Loads a configuration from an environment variable pointing to
@@ -100,6 +101,7 @@ class Config(dict):
         .. versionadded:: 0.7
            `silent` parameter.
         """
+        filename = os.path.join(self.root_path, filename)
         d = imp.new_module('config')
         d.__file__ = filename
         try:
@@ -158,6 +160,8 @@ class Config(dict):
         <OPTION_NAME>
         """
         from ConfigParser import SafeConfigParser
+
+        filename = os.path.join(self.root_path, filename)
         config = SafeConfigParser()
         with open(filename, 'rb') as cfgfile:
             config.readfp(cfgfile)
