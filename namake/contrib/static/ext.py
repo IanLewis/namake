@@ -1,7 +1,12 @@
 class StaticFiles(object):
-    def __init__(self, app):
+    def __init__(self, app=None):
+        if app is not None:
+            self.init_app(app)
+
+    def init_app(self, app):
         self.app = app
         app.static_files = self
+        app.extensions['static_files'] = self
 
         app.config.setdefault('STATIC_FOLDER', 'static')
         app.config.setdefault('STATIC_FILE_MAX_AGE_DEFAULT', 12 * 60 * 60) # 12 hours

@@ -9,11 +9,16 @@ class Jinja2(object):
     A mixin class for use with the Application
     class in order to set up a Jinja2 environment.
     """
-    def __init__(self, app):
+    def __init__(self, app=None):
+        if app is not None:
+            self.init_app(app)
+    
+    def init_app(self, app):
         import os
 
         self.app = app
         app.jinja2 = self
+        app.extensions['jinja2'] = self
 
         app.config.setdefault('JINJA2_TEMPLATE_DIRS', [os.path.join(app.root_path, 'templates')])
         app.config.setdefault('JINJA2_EXTENSIONS', ['jinja2.ext.autoescape', 'jinja2.ext.with_'])

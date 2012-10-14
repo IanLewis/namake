@@ -85,6 +85,7 @@ class Application(object):
     def __init__(self, import_name):
         self.routes = []
         self.controller_cache = {}
+        self.extensions = {}
         self.root_path = get_root_path(import_name)
         self.config = Config(self.root_path, 
                              defaults=self.get_default_config())
