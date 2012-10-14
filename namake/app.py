@@ -13,6 +13,8 @@ import logging
 from webob import Request, Response
 
 # TODO: Reloading local development server.
+# TODO: Move development server to contrib.
+
 # TODO: HTTP request error handling based on webob.exc
 # TODO: URL Composition (reverse)
 # TODO: Logging using the standard logging module.
@@ -20,6 +22,7 @@ from webob import Request, Response
 
 from .config import Config
 
+# TODO: Defer logging setup?
 logger = logging.getLogger(__name__)
 
 __all__ = (
