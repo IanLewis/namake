@@ -123,6 +123,7 @@ class Application(object):
         """
         return {
             'DEBUG': False,
+            'SECRET_KEY': None,
         }
 
     @setupmethod
@@ -138,6 +139,32 @@ class Application(object):
                             kwargs))
 
     def __call__(self, environ, start_response):
+        """Shortcut for :attr:`wsgi_app`."""
+        return self.wsgi_app(environ, start_response)
+
+    def wsgi_app(self, environ, start_response):
+        """
+        The actually wsgi application handler. This is maintained
+        in the :attr:`wsgi_app` method so that extensions can
+        easily add wsgi middleware without loosing a reference
+        to the application object.
+
+        So instead of doing this::
+
+            app = MyMiddleware(app)
+
+        It's a better idea to do this instead::
+
+            app.wsgi_app = MyMiddleware(app.wsgi_app)
+
+        Then you still have the original application object around and
+        can continue to call methods on it.
+
+        :param environ: a WSGI environment
+        :param start_response: a callable accepting a status code,
+                               a list of headers and an optional
+                               exception context to start the response
+        """
         request = self.request_class(environ)
 
         # Mark the app as having received it's first request.
@@ -146,6 +173,11 @@ class Application(object):
         # Attach the application to the request so that the
         # request handler has a copy of it.
         request.app = self
+
+        # Preprocess the request calling all before_request functions.
+        rv = self.preprocess_request(request)
+        if rv:
+            return self.make_response(request, rv)
 
         for regex, name, controller_path, kwargs in self.routes:
             match = regex.match(request.path_info)
@@ -217,28 +249,19 @@ class Application(object):
         """
         self._after_request_funcs.append(f)
         return f
+
+    def preprocess_request(self, request):
+        rv = None
+        for func in self._before_request_funcs:
+            rv = func(request)
+            if rv:
+                return rv
     
     def handle_request(self, request, controller, args, kwargs):
         """
         Handles a request via the given controller.
         """
-        rv = None
-        for func in self._before_request_funcs:
-            rv = func(request)
-            if rv:
-                break
-
-        if not rv:
-            rv = controller(request, *args, **kwargs)
-        response = self.make_response(rv)
-
-        after_rv = None
-        for func in reversed(self._after_request_funcs):
-            after_rv = func(request, response)
-            if after_rv:
-                return self.make_response(request, after_rv)
-        
-        return response
+        return self.make_response(request, controller(request, *args, **kwargs))
 
     @setupmethod
     def register_error_handler(self, code, f):
@@ -271,11 +294,11 @@ class Application(object):
 
         handler = self._error_handlers.get(status)
         if handler:
-            return self.make_response(handler(e))
+            return self.make_response(request, handler(e))
         else:
-            return self.make_response(e)
+            return self.make_response(request, e)
 
-    def make_response(self, rv):
+    def make_response(self, request, rv, after_request_funcs=True):
         """Converts the return value from a view function to a real
         response object that is an instance of :attr:`response_class`.
 
@@ -327,6 +350,13 @@ class Application(object):
                 rv.status_int = status
         if headers:
             rv.headerlist.extend(headers)
+
+        if after_request_funcs:
+            after_rv = None
+            for func in reversed(self._after_request_funcs):
+                after_rv = func(request, rv)
+                if after_rv:
+                    return self.make_response(request, after_rv, False)
 
         return rv
 
