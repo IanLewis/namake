@@ -15,7 +15,7 @@ class Jinja2(object):
         if app is not None:
             self.init_app(app)
     
-    def init_app(self, app):
+    def init_app(self, app, handle_errors=True):
         import os
 
         self.app = app
@@ -25,6 +25,10 @@ class Jinja2(object):
         app.config.setdefault('JINJA2_TEMPLATE_DIRS', [os.path.join(app.root_path, 'templates')])
         app.config.setdefault('JINJA2_EXTENSIONS', ['jinja2.ext.autoescape', 'jinja2.ext.with_'])
         app.config.setdefault('JINJA2_AUTOESCAPE_FILE_EXTENSIONS', ['.html', '.htm', '.xml', '.xhtml'])
+
+        if handle_errors:
+            app.register_error_handler(404, self.handle_404)
+            app.register_error_handler(500, self.handle_500)
 
     @locked_cached_property
     def env(self):
@@ -55,6 +59,22 @@ class Jinja2(object):
     def update_template_context(self, context):
         pass
 
+
+    def handle_404(self, e):
+        """
+        A 404 error handler which renders the template "404.html"
+        as as response.
+        """
+        template = self.env.get_or_select_template("404.html")
+        return template.render()
+
+    def handle_500(self, e):
+        """
+        A 500 error handler which renders the template "500.html"
+        as as response.
+        """
+        template = self.env.get_or_select_template("500.html")
+        return template.render()
 
 def render_template(request, template_name_or_list, context):
     request.app.jinja2.update_template_context(context)
