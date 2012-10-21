@@ -161,7 +161,7 @@ class Application(object):
                         else:
                             # The controller module hasn't been loaded yet.
                             # Load it here.
-                            from .utils import import_string
+                            from .utils.module import import_string
                             controller = import_string(controller_path)
 
                     # If there are any named groups, use those as kwargs, ignoring
