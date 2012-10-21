@@ -9,6 +9,7 @@ import sys
 import os
 import pkgutil
 import logging
+from functools import update_wrapper
 
 from webob import Request, Response
 
@@ -74,6 +75,21 @@ def repl_start_response(start_response, parent_exc_info):
         return start_response(status, headers, exc_info)
     return _wrapped
 
+def setupmethod(f):
+    """Wraps a method so that it performs a check in debug mode if the
+    first request was already handled.
+    """
+    def wrapper_func(self, *args, **kwargs):
+        if self.config['DEBUG'] and self._got_first_request:
+            raise AssertionError('A setup function was called after the '
+                'first request was handled.  This usually indicates a bug '
+                'in the application where a module was not imported '
+                'and decorators or other functionality was called too late.\n'
+                'To fix this make sure you call all setup methods, such '
+                'as add_route() before serving requests.')
+        return f(self, *args, **kwargs)
+    return update_wrapper(wrapper_func, f)
+
 class Application(object):
     """
     The main application class.
@@ -87,6 +103,9 @@ class Application(object):
         self.controller_cache = {}
         self.extensions = {}
         self._error_handlers = {}
+        self._got_first_request = False
+        self._before_request_funcs = []
+        self._after_request_funcs = []
         self.root_path = get_root_path(import_name)
         self.config = Config(self.root_path, 
                              defaults=self.get_default_config())
@@ -106,6 +125,7 @@ class Application(object):
             'DEBUG': False,
         }
 
+    @setupmethod
     def add_route(self, regex, controller, name=None, kwargs=None):
         """
         Adds a url route to the application's routing table.
@@ -119,6 +139,9 @@ class Application(object):
 
     def __call__(self, environ, start_response):
         request = self.request_class(environ)
+
+        # Mark the app as having received it's first request.
+        self._got_first_request = True
 
         # Attach the application to the request so that the
         # request handler has a copy of it.
@@ -167,13 +190,57 @@ class Application(object):
         # No matching URLs. Return A 404.
         from webob import exc
         return self.handle_exception(request, exc.HTTPNotFound())(environ, start_response)
+
+    @setupmethod
+    def before_request(self, f):
+        """
+        Registers a function to run before each request.
+        These functions are run in the order they are registered.
+
+        Your function must take one parameter, a :attr:`request_class` object
+        and return a new request object or the same request object.
+        """
+        self._before_request_funcs.append(f)
+        return f
+
+    @setupmethod
+    def after_request(self, f):
+        """
+        Register a function to be run after each request. Your function
+        must take two parameters, a :attr:`request_class` object and a
+        :attr:`response_class` object and return a new response object
+        or the same object.
+
+        This function will be called at the end of each request
+        regardless of if an unhandled exception ocurred in the
+        reverse order that it was registered.
+        """
+        self._after_request_funcs.append(f)
+        return f
     
     def handle_request(self, request, controller, args, kwargs):
         """
         Handles a request via the given controller.
         """
-        return self.make_response(controller(request, *args, **kwargs))
+        rv = None
+        for func in self._before_request_funcs:
+            rv = func(request)
+            if rv:
+                break
 
+        if not rv:
+            rv = controller(request, *args, **kwargs)
+        response = self.make_response(rv)
+
+        after_rv = None
+        for func in reversed(self._after_request_funcs):
+            after_rv = func(request, response)
+            if after_rv:
+                return self.make_response(request, after_rv)
+        
+        return response
+
+    @setupmethod
     def register_error_handler(self, code, f):
         """
         Registers an error handler for the given HTTP status
