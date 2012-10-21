@@ -1,3 +1,5 @@
+from namake.utils.decorators import locked_cached_property
+
 __all__ = (
     'Jinja2Mixin',
     'render_template',
@@ -24,7 +26,7 @@ class Jinja2(object):
         app.config.setdefault('JINJA2_EXTENSIONS', ['jinja2.ext.autoescape', 'jinja2.ext.with_'])
         app.config.setdefault('JINJA2_AUTOESCAPE_FILE_EXTENSIONS', ['.html', '.htm', '.xml', '.xhtml'])
 
-    @property
+    @locked_cached_property
     def env(self):
         if not hasattr(self, '_jinja2_env'):
             from jinja2 import FileSystemLoader, Environment
