@@ -65,12 +65,14 @@ subsequent parameters:
     app = Application()
     app.add_route('/', lambda request: Response("Hello World"))
     if __name__ == '__main__':
-        app.run()
+        from namake.contrib.devserver import run_devserver
+        run_devserver(app)
 
 You can run it from the command line like so. Sorry, no HTML tracebacks or interactive debugging.
 
     $ python myapp.py
      * Running on http://localhost:8000/
+     * Restarting with reloader
 
 Accessing http://localhost:8000/ should produce the Hello World text.
 
