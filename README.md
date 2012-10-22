@@ -21,11 +21,10 @@ possible as well as encouraging applications to do so as well. Apps that
 require modules to be loaded at startup can still load them at startup
 in their own application code.
 
-Namake is a micro-framework so the framework core will remain small and won't
-make many assumptions about the enviornment that you are using besides a few
-basic WSGI libraries. Extra functionality, such as for the App Engine
-environment or for for Jinja2 templating, will be contained in contrib and
-extension modules.
+Namake is a micro-framework so the framework core will remain very small and won't
+make many assumptions about the environment that you are using besides the webob
+library. Extra functionality, such as for the App Engine environment or for for
+Jinja2 templating, and sessions will be contained in contrib and extension modules.
 
 Target Environments
 --------------------------
@@ -35,7 +34,23 @@ to use Python versions and libraries that are readily available on App Engine.
 It is for this reason that namake supports older verions of libraries like WebOb 1.1.1 and Jinja2 2.6.
 
 However, namake can be used in any environment that has as WSGI server container,
-so other envionments such as AWS Beanstalk are also targets.
+so other envionments such as AWS Beanstalk or Heroku are also targets.
+
+Requirements
+--------------------------
+
+Currently the namake core has the following requirements:
+
+    Python >= 2.7
+    WebOb >= 1.1.1
+
+For Jinja2 templating:
+
+    Jinja2 >= 2.6
+
+For the local development server (not required in production):
+
+    Werkzeug >= 0.8.3
 
 Current Status
 --------------------------
