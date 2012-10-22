@@ -13,10 +13,6 @@ from functools import update_wrapper
 
 from webob import Request, Response
 
-# TODO: Reloading local development server.
-# TODO: Move development server to contrib.
-
-# TODO: HTTP request error handling based on webob.exc
 # TODO: URL Composition (reverse)
 # TODO: Logging using the standard logging module.
 # TODO: Namake's Request and Response objects.
@@ -257,11 +253,11 @@ class Application(object):
             if rv:
                 return rv
     
-    def handle_request(self, request, controller, args, kwargs):
+    def handle_request(self, request, controller, kwargs):
         """
         Handles a request via the given controller.
         """
-        return self.make_response(request, controller(request, *args, **kwargs))
+        return self.make_response(request, controller(request, **kwargs))
 
     @setupmethod
     def register_error_handler(self, code, f):
@@ -283,15 +279,23 @@ class Application(object):
                 logger.error('HTTP Server Error: "%s"' % e, exc_info=1)
             status = e.code 
         else:
+            # If in debug mode show the debug error page.
+            if self.config['DEBUG']:
+                # Raise the error for the debugger.
+                if exc_info[1] is e:
+                    # If the exception is the original exception raise it.
+                    # so the debugger shows the right traceback.
+                    raise exc_info[0], exc_info[1], exc_info[2]
+                else:
+                    # The exception passed is different from the exc_info
+                    # so just re-raise it.
+                    raise e
+            
+            # Otherwise return a normal HttpInternalServerError
             logger.error('Internal Server Error: "%s"' % e, exc_info=1)
             status = 500
             e = exc.HTTPInternalServerError()
         
-        # If in debug mode show the debug error page.
-        if status == 500 and self.config['DEBUG']:
-            from .debug import DebugHTTPInternalServerError
-            return DebugHTTPInternalServerError(exc_info=exc_info)
-
         handler = self._error_handlers.get(status)
         if handler:
             return self.make_response(request, handler(e))
@@ -359,11 +363,3 @@ class Application(object):
                     return self.make_response(request, after_rv, False)
 
         return rv
-
-    def run(self, host='', port=8000, debug=None, **options):
-        # For now just use the wsgiref server
-        from wsgiref.simple_server import make_server
-        httpd = make_server(host, port, self)
-        display_hostname = host or 'localhost'
-        logger.info(' * Running on http://%s:%d/', display_hostname, port)
-        httpd.serve_forever()
