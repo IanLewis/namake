@@ -193,20 +193,15 @@ class Application(object):
                             controller = import_string(controller_path)
 
                     # If there are any named groups, use those as kwargs, ignoring
-                    # non-named groups. Otherwise, pass all non-named arguments as
-                    # positional arguments.
+                    # non-named groups.
                     urlkwargs = match.groupdict()
-                    if urlkwargs:
-                        urlargs = ()
-                    else:
-                        urlargs = match.groups()
 
-                    # In both cases, pass any extra_kwargs as **kwargs.
+                    # Pass any extra_kwargs as **kwargs.
                     if kwargs:
                         urlkwargs.update(kwargs)
 
                     # Call the request handler and return the response.
-                    response = self.handle_request(request, controller, urlargs, urlkwargs)
+                    response = self.handle_request(request, controller, urlkwargs)
                     return response(environ, start_response)
                 except Exception, e:
                     # An exception has occurred. 
